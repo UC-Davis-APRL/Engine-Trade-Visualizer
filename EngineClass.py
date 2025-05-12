@@ -9,9 +9,8 @@ from functools import cached_property
 
 ureg = UnitRegistry() #to use elsewhere
 
-
 #Everything is in SI
-# Here are a bunch of functions pasted from a diff calculator.
+# Here are a bunch of functions pasted from a diff calculator. (Might move to a different file later.)
 def C_star(Chamber_press, m_dot, A_throat):
     C = (Chamber_press * A_throat)/m_dot #C* is a performance metric called characteristic velocity
     return C
@@ -47,40 +46,76 @@ def IstrpcTemp(T_0, gamma, Mach):
     return T
 
 
+#Constants
+R_ideal = 8.3144598 * ((ureg.joule) / (ureg.mol * ureg.degK))
 
 #Define the class here.
 class engine():
-    def __init__(self, OF, Pc, M_dot):
+    def __init__(self, OF, Pc_atm, M_dot):
 
-        self.OF = OF
-        self.Pc = Pc * ureg.atm
+        self.OF = OF #unitless (Mass ratio)
+        self.Pc = Pc_atm * ureg.atm
         self.M_dot = M_dot * (ureg.kg / ureg.second)
-
         #Temporary Object
-        C = CEA_Obj( oxName='LOX', fuelName='RP_1', pressure_units='psia')
-
-        self.AeAt = C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / ureg.atmosphere), frozen=0, frozenAtThroat=0) #unitless
-        self.Isp = C.estimate_Ambient_Isp(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps=self.AeAt, Pamb=14.7, frozen=0, frozenAtThroat=0)[0] * ureg.second
-        self.Ve = (self.Isp * ureg.gravity).to('m/s')
-        self.Tc = (C.get_Tcomb(Pc=self.Pc.to('psi').magnitude, MR=self.OF) * ureg.degR).to('degK')
-        self.A_star = A_star(self.M_dot, self.Pc, self.Tc, R, gamma) # Now the eternal question, which R is this???
-        self.Thrust = F_thrust(self.M_dot, self.Ve)
-
+        self.C = CEA_Obj(oxName='LOX', fuelName='RP_1')
+        self.AeAt = self.C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / ureg.atmosphere), frozen=0, frozenAtThroat=0) #unitless
         pass
-    # @cached_property
-    # def CEA(self):
-    #     print("Running CEA...")
-    #     #Calculate everything
-    #     return 
+
+    @cached_property
+    def Isp(self):
+        self.Isp = self.C.estimate_Ambient_Isp(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps=self.AeAt, Pamb=14.7, frozen=0, frozenAtThroat=0)[0] * ureg.second
+        return self.Isp
+    
+    @cached_property
+    def Ve(self):
+        self.Ve = (self.Isp * ureg.gravity).to('m/s')
+        return self.Ve
+    
+    @cached_property
+    def T_c(self):
+        self.T_c = (self.C.get_Tcomb(Pc=self.Pc.to('psi').magnitude, MR=self.OF) * ureg.degR).to('degK')
+        return self.T_c
+    
+    #A_thr is broken
+    @cached_property
+    def A_star(self):
+        #print(self.Pc.to('psi'))
+        self.MolWt_Thr = self.C.get_Throat_MolWt_gamma(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[0] * (ureg.lb / ureg.mol)
+        #print(self.MolWt_Thr)
+        self.gamma_Thr = self.C.get_Throat_MolWt_gamma(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= (self.Pc.to('psi') / ureg.atmosphere), frozen=0)[1] #unitless
+        #print(self.gamma_Thr)
+        self.R_bar_Thr = R_ideal * self.MolWt_Thr.to('g / mol')
+        # print(self.R_bar_Thr)
+        # print(self.T_c)
+        self.A_star = A_star(self.M_dot, (self.Pc).to('Pa'), self.T_c, self.R_bar_Thr, self.gamma_Thr).magnitude # Now the eternal question, which R is this???
+        return self.A_star
+    
+    @cached_property
+    def A_e(self):
+        self.A_e = (self.AeAt * self.A_star) #.to('m**2') *unit conversions are cooked
+        return self.A_e
+    
+    @cached_property
+    def Thrust(self):
+        self.Thrust = (self.M_dot * self.Ve).to('N')
+        return self.Thrust
+    
+
+
+engineOne = engine(2, 20, 1)
+print(engineOne.A_star)
 
 
 #Debugging
 # C = CEA_Obj( oxName='LOX', fuelName='RP_1')
+# cea = C.get_full_cea_output(Pc=300, MR=2.5, eps=40)
+# print(cea)
 # press = 30 * ureg.atm
 # print(((C.get_Tcomb(Pc=(press.to('psi').magnitude), MR=1.8)) * ureg.degR).to('degK'))
 # print(C.get_Temperatures(Pc=100.0, MR=1.0, eps=40.0, frozen=0, frozenAtThroat=0))
 
 
 
-#So from what I understand, we should run CEA on initializations always but things like thermals or other potentially intensive tasks we should run in a cached property. 
-#I guess we create the plotting function here too ig??? Also presumably the propellant feed calc should be in a seperate python file 
+#TO-do
+# - plotting function
+# - A function to instatiate an array of engines.
