@@ -1,2 +1,9 @@
 # Engine-Trade-Visualizer
-# Write the readme here eventually...
+
+Fully integrated vehicle trade calculator...
+
+## Requirements
+- Python 3.12.0 
+
+## Docs
+https://rocketcea.readthedocs.io/en/latest/functions.html

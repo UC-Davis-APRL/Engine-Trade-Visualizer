@@ -1,13 +1,14 @@
 import numpy as np
+import rocketcea 
+from rocketcea.cea_obj import CEA_Obj
 from functools import cached_property
+
 
 #Everything is in SI
 # Here are a bunch of functions pasted from a diff calculator.
 def C_star(Chamber_press, m_dot, A_throat):
-    C = (Chamber_press * A_throat)/m_dot
+    C = (Chamber_press * A_throat)/m_dot #C* is a performance metric called characteristic velocity
     return C
-
-#C* is a performance metric called characteristic velocity
 
 def A_star(m_dot, P_0, T_0, R, gamma):
     A = (m_dot/P_0) * (np.sqrt((T_0 * R)/gamma)) * ((1+((gamma-1)/2))**((gamma+1)/(2*(gamma-1))))
@@ -43,18 +44,29 @@ def IstrpcTemp(T_0, gamma, Mach):
 
 #Define the class here.
 class engine():
-    def __init__(self, OF, Pressure_pa, Thrust_N):
+    def __init__(self, OF, Pressure_psi, Thrust_N):
         self.OF = OF
-        self.Pressure = Pressure_pa
+        self.Pressure = Pressure_psi
         self.Thrust = Thrust_N
+
+        C = CEA_Obj( oxName='LOX', fuelName='RP_1', pressure_units='psia')
+        print(CEA_Obj.estimate_Ambient_Isp(Pc=100.0, MR=1.0, eps=40.0, Pamb=14.7, frozen=0, frozenAtThroat=0))
+        # Since expansion ratio ("eps") is passed as an input we will likely need to write a function to either optimize a value for eps or use isentropic flow 
+        # relations to find Mach at ambient and then Area... Also, since this is a flight vehicle, expansion ratio might need to follow the empirical "rules" 
+        # of what to expand to
+
+
+
+
         pass
     #Run Cea and define the rest of the engine if accessed? Still not sure whether to calculatue it on startup? Let's see if Rocketcea is quick.
-    @cached_property
-    def CEA(self):
-        print("Running CEA...")
-        #Calculate everything
-        return 
+    # @cached_property
+    # def CEA(self):
+    #     print("Running CEA...")
+    #     #Calculate everything
+    #     return 
 
-
+# C = CEA_Obj( oxName='LOX', fuelName='RP_1')
+# print(C.estimate_Ambient_Isp(Pc=100.0, MR=1.0, eps=2, Pamb=14.7, frozen=0, frozenAtThroat=0))
 #So from what I understand, we should run CEA on initializations always but things like thermals or other potentially intensive tasks we should run in a cached property. 
 #I guess we create the plotting function here too ig??? Also presumably the propellant feed calc should be in a seperate python file just for cleanliness? 
