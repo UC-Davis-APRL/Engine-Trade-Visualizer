@@ -1,7 +1,13 @@
 import numpy as np
 import rocketcea 
+import pint
+pint.__version__  
+from pint import UnitRegistry
+
 from rocketcea.cea_obj import CEA_Obj
 from functools import cached_property
+
+ureg = UnitRegistry() #to use elsewhere
 
 
 #Everything is in SI
@@ -44,29 +50,37 @@ def IstrpcTemp(T_0, gamma, Mach):
 
 #Define the class here.
 class engine():
-    def __init__(self, OF, Pressure_psi, Thrust_N):
+    def __init__(self, OF, Pc, M_dot):
+
         self.OF = OF
-        self.Pressure = Pressure_psi
-        self.Thrust = Thrust_N
+        self.Pc = Pc * ureg.atm
+        self.M_dot = M_dot * (ureg.kg / ureg.second)
 
+        #Temporary Object
         C = CEA_Obj( oxName='LOX', fuelName='RP_1', pressure_units='psia')
-        print(CEA_Obj.estimate_Ambient_Isp(Pc=100.0, MR=1.0, eps=40.0, Pamb=14.7, frozen=0, frozenAtThroat=0))
-        # Since expansion ratio ("eps") is passed as an input we will likely need to write a function to either optimize a value for eps or use isentropic flow 
-        # relations to find Mach at ambient and then Area... Also, since this is a flight vehicle, expansion ratio might need to follow the empirical "rules" 
-        # of what to expand to
 
-
-
+        self.AeAt = C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / ureg.atmosphere), frozen=0, frozenAtThroat=0) #unitless
+        self.Isp = C.estimate_Ambient_Isp(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps=self.AeAt, Pamb=14.7, frozen=0, frozenAtThroat=0)[0] * ureg.second
+        self.Ve = (self.Isp * ureg.gravity).to('m/s')
+        self.Tc = (C.get_Tcomb(Pc=self.Pc.to('psi').magnitude, MR=self.OF) * ureg.degR).to('degK')
+        self.A_star = A_star(self.M_dot, self.Pc, self.Tc, R, gamma) # Now the eternal question, which R is this???
+        self.Thrust = F_thrust(self.M_dot, self.Ve)
 
         pass
-    #Run Cea and define the rest of the engine if accessed? Still not sure whether to calculatue it on startup? Let's see if Rocketcea is quick.
     # @cached_property
     # def CEA(self):
     #     print("Running CEA...")
     #     #Calculate everything
     #     return 
 
+
+#Debugging
 # C = CEA_Obj( oxName='LOX', fuelName='RP_1')
-# print(C.estimate_Ambient_Isp(Pc=100.0, MR=1.0, eps=2, Pamb=14.7, frozen=0, frozenAtThroat=0))
+# press = 30 * ureg.atm
+# print(((C.get_Tcomb(Pc=(press.to('psi').magnitude), MR=1.8)) * ureg.degR).to('degK'))
+# print(C.get_Temperatures(Pc=100.0, MR=1.0, eps=40.0, frozen=0, frozenAtThroat=0))
+
+
+
 #So from what I understand, we should run CEA on initializations always but things like thermals or other potentially intensive tasks we should run in a cached property. 
-#I guess we create the plotting function here too ig??? Also presumably the propellant feed calc should be in a seperate python file just for cleanliness? 
+#I guess we create the plotting function here too ig??? Also presumably the propellant feed calc should be in a seperate python file 
