@@ -1,6 +1,7 @@
 import numpy as np
 import rocketcea 
 import pint
+import time
 pint.__version__  
 from pint import UnitRegistry
 
@@ -9,7 +10,8 @@ from functools import cached_property
 
 ureg = UnitRegistry() #to use elsewhere
 
-#Everything is in SI
+start = time.time()
+
 # Here are a bunch of functions pasted from a diff calculator. (Might move to a different file later.)
 def C_star(Chamber_press, m_dot, A_throat):
     C = (Chamber_press * A_throat)/m_dot #C* is a performance metric called characteristic velocity
@@ -47,7 +49,7 @@ def IstrpcTemp(T_0, gamma, Mach):
 
 
 #Constants
-R_ideal = 8.3144598 * ((ureg.joule) / (ureg.mol * ureg.degK))
+R_ideal = 8.3144598 * ((((ureg.meter) ** 3) * ureg.Pa)/ (ureg.mol * ureg.degK))
 
 #Define the class here.
 class engine():
@@ -76,18 +78,17 @@ class engine():
         self.T_c = (self.C.get_Tcomb(Pc=self.Pc.to('psi').magnitude, MR=self.OF) * ureg.degR).to('degK')
         return self.T_c
     
-    #A_thr is broken
     @cached_property
     def A_star(self):
-        #print(self.Pc.to('psi'))
-        self.MolWt_Thr = self.C.get_Throat_MolWt_gamma(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[0] * (ureg.lb / ureg.mol)
-        #print(self.MolWt_Thr)
-        self.gamma_Thr = self.C.get_Throat_MolWt_gamma(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= (self.Pc.to('psi') / ureg.atmosphere), frozen=0)[1] #unitless
-        #print(self.gamma_Thr)
-        self.R_bar_Thr = R_ideal * self.MolWt_Thr.to('g / mol')
+        # print(self.Pc.to('psi'))
+        self.MolWt_Thr = (self.C.get_Throat_MolWt_gamma(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[0] / 453.59237) * (ureg.lb / ureg.mol)
+        # print(self.MolWt_Thr)
+        self.gamma_Thr = self.C.get_Throat_MolWt_gamma(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt, frozen=0)[1] #unitless
+        # print(self.gamma_Thr)
+        self.R_bar_Thr = R_ideal / self.MolWt_Thr.to('kg / mol')
         # print(self.R_bar_Thr)
         # print(self.T_c)
-        self.A_star = A_star(self.M_dot, (self.Pc).to('Pa'), self.T_c, self.R_bar_Thr, self.gamma_Thr).magnitude # Now the eternal question, which R is this???
+        self.A_star = A_star(self.M_dot, (self.Pc).to('Pa'), self.T_c, self.R_bar_Thr, self.gamma_Thr).magnitude 
         return self.A_star
     
     @cached_property
@@ -102,9 +103,18 @@ class engine():
     
 
 
-engineOne = engine(2, 20, 1)
-print(engineOne.A_star)
+engineOne = engine(OF=2, Pc_atm=20, M_dot=1)
+#engines = [engine(2, i * 10, 1) for i in range(4)]
+ThroatRadius = np.sqrt(engineOne.A_star / np.pi) * 1000
+print(ThroatRadius)
+# RPA gives a throat radius of 16.485 mm, we get 16.6898mm which is good enough
+print(engineOne.AeAt)
+# RPA gives 3.62 Ae/At which is reflected by this.
 
+
+
+end = time.time()
+print(f"Total runtime {end - start} seconds")
 
 #Debugging
 # C = CEA_Obj( oxName='LOX', fuelName='RP_1')
@@ -118,5 +128,5 @@ print(engineOne.A_star)
 
 #TO-do
 # - plotting function
-# - A function to instatiate an array of engines.
+# - A function to instatiate an array of engines w/ 2-3 independent variables.
 # - Check the validity of all of the functions and outputs against RPA or another calculator.
