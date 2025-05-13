@@ -119,3 +119,4 @@ print(engineOne.A_star)
 #TO-do
 # - plotting function
 # - A function to instatiate an array of engines.
+# - Check the validity of all of the functions and outputs against RPA or another calculator.
