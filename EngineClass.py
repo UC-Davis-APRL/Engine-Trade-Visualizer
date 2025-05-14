@@ -53,25 +53,36 @@ R_ideal = 8.3144598 * ((((ureg.meter) ** 3) * ureg.Pa)/ (ureg.mol * ureg.degK))
 
 #Define the class here.
 class engine():
-    def __init__(self, OF, Pc_atm, M_dot):
+    def __init__(self, OF = None, Pc_atm = None, M_dot = None, Thrust = None):
 
-        self.OF = OF #unitless (Mass ratio)
-        self.Pc = Pc_atm * ureg.atm
-        self.M_dot = M_dot * (ureg.kg / ureg.second)
-        #Temporary Object
         self.C = CEA_Obj(oxName='LOX', fuelName='RP_1')
-        self.AeAt = self.C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / ureg.atmosphere), frozen=0, frozenAtThroat=0) #unitless
-        pass
 
-    @cached_property
-    def Isp(self):
-        self.Isp = self.C.estimate_Ambient_Isp(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps=self.AeAt, Pamb=14.7, frozen=0, frozenAtThroat=0)[0] * ureg.second
-        return self.Isp
-    
-    @cached_property
-    def Ve(self):
-        self.Ve = (self.Isp * ureg.gravity).to('m/s')
-        return self.Ve
+        if (M_dot == None) & (Thrust != None):
+            self.Pc = Pc_atm * ureg.atm
+            self.OF = OF #unitless (Mass ratio)
+            self.Thrust = Thrust * ureg.N
+
+            self.AeAt = self.C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / (1*ureg.atmosphere)), frozen=0, frozenAtThroat=0) #unitless
+            self.Isp = self.C.estimate_Ambient_Isp(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps=self.AeAt, Pamb=14.7, frozen=0, frozenAtThroat=0)[0] * ureg.second
+            self.Ve = (self.Isp * ureg.gravity).to('m/s')
+
+            self.M_dot = self.Thrust / self.Ve
+            
+        elif (Thrust == None) & (M_dot != None):
+            self.Pc = Pc_atm * ureg.atm
+            self.OF = OF #unitless (Mass ratio)
+            self.M_dot = M_dot * (ureg.kg / ureg.second)
+
+            self.AeAt = self.C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / (1*ureg.atmosphere)), frozen=0, frozenAtThroat=0) #unitless
+            self.Isp = self.C.estimate_Ambient_Isp(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps=self.AeAt, Pamb=14.7, frozen=0, frozenAtThroat=0)[0] * ureg.second
+            self.Ve = (self.Isp * ureg.gravity).to('m/s')
+            
+            self.Thrust = self.M_dot * self.Ve
+
+        else:
+            raise Exception("Input Error, Please Enter Pressure, OF, and Either Mass flow or Thrust")
+        
+        pass
     
     @cached_property
     def T_c(self):
@@ -100,17 +111,14 @@ class engine():
     def Thrust(self):
         self.Thrust = (self.M_dot * self.Ve).to('N')
         return self.Thrust
-    
-
 
 engineOne = engine(OF=2, Pc_atm=20, M_dot=1)
-#engines = [engine(2, i * 10, 1) for i in range(4)]
+engines = [engine(OF = 2, Pc_atm = i * 10, M_dot = 1) for i in range(1, 4)]
 ThroatRadius = np.sqrt(engineOne.A_star / np.pi) * 1000
 print(ThroatRadius)
 # RPA gives a throat radius of 16.485 mm, we get 16.6898mm which is good enough
 print(engineOne.AeAt)
 # RPA gives 3.62 Ae/At which is reflected by this.
-
 
 
 end = time.time()
