@@ -47,6 +47,10 @@ def IstrpcTemp(T_0, gamma, Mach):
     T = T_0 * ((1 + (((gamma - 1)/2) * Mach**2) ) ** (-1))
     return T
 
+def IstrpcPress(P_0, gamma, Mach):
+    P = P_0 * [1 + (gamma-1)/2 * Mach^2]^(-gamma/(gamma-1))
+    return P
+
 
 #Constants
 R_ideal = 8.3144598 * ((((ureg.meter) ** 3) * ureg.Pa)/ (ureg.mol * ureg.degK))
@@ -101,6 +105,23 @@ class engine():
         self.Thrust = (self.M_dot * self.Ve).to('N')
         return self.Thrust
     
+    @cached_property
+    def HeatTransferCoefficient(self):
+        self.D_Thr = 2*np.sqrt(self.A_star/np.pi)
+        self.Cp_Thr = self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[0]
+        self.Viscosity_Thr = self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[1]
+        self.Thermal_Conductivity_Thr = self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[2]
+        self.Prandtl_Thr=self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[3]
+
+        self.Press_Thr = IstrpcPress(P_0, self.gamma_Thr, 1)
+        self.T_Thr = IstrpcTemp(T_0, self.gamma_Thr, 1)
+        self.Universal_Gas_Constant = 8.314
+        self.C_star = np.sprt(((self.R_bar_Thr*self.T_Thr)/(self.gamma_Thr)) * ((self.gamma_Thr + 1)/2)^((self.gamma_Thr+1)/(self.gamma_Thr-1)))
+        
+        #self.Correction_Factor = 
+        
+        self.HeatTransferCoefficient =((0.026/self.D_Thr^0.2)*((self.Cp_Thr*self.Viscosity_Thr^0.2)/(self.Prandtl_Thr^0.6))*((self.Press_Thr/self.C_star)^0.8)*((self.D_Thr/self.Universal_Gas_Constant)^0.1)*C32)/10^3
+        return self.HeatTransferCoefficient
 
 
 engineOne = engine(OF=2, Pc_atm=20, M_dot=1)
