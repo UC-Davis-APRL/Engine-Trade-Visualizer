@@ -112,14 +112,14 @@ class engine():
         self.Viscosity_Thr = self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[1]
         self.Thermal_Conductivity_Thr = self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[2]
         self.Prandtl_Thr=self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[3]
-
+        
         self.Press_Thr = IstrpcPress(P_0, self.gamma_Thr, 1)
         self.T_Thr = IstrpcTemp(T_0, self.gamma_Thr, 1)
         self.Universal_Gas_Constant = 8.314
         self.C_star = np.sprt(((self.R_bar_Thr*self.T_Thr)/(self.gamma_Thr)) * ((self.gamma_Thr + 1)/2)^((self.gamma_Thr+1)/(self.gamma_Thr-1)))
         
         #self.Correction_Factor = 
-        
+
         self.HeatTransferCoefficient =((0.026/self.D_Thr^0.2)*((self.Cp_Thr*self.Viscosity_Thr^0.2)/(self.Prandtl_Thr^0.6))*((self.Press_Thr/self.C_star)^0.8)*((self.D_Thr/self.Universal_Gas_Constant)^0.1)*C32)/10^3
         return self.HeatTransferCoefficient
 
