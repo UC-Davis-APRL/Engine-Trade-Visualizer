@@ -47,19 +47,26 @@ def IstrpcTemp(T_0, gamma, Mach):
     T = T_0 * ((1 + (((gamma - 1)/2) * Mach**2) ) ** (-1))
     return T
 
+def nearest8th(value): #round up to nearest 8th of an inch for purchasability
+    value = np.ceil(value/0.125)
+    return value
 
 #Constants
 R_ideal = 8.3144598 * ((((ureg.meter) ** 3) * ureg.Pa)/ (ureg.mol * ureg.degK))
+densityLOX = 1140 * ((ureg.kilogram)/(ureg.meter ** 3)) # density at boiling point at 14.7 psi
+densityKero = 820 * ((ureg.kilogram)/(ureg.meter ** 3)) # density at room temperature at 14.7 psi
+ullageRatio = 1.15 #to be moved? unsure if this is the best place for ullage, esp if we want to "calculate" it
 
 #Define the class here.
 class engine():
-    def __init__(self, OF = None, Pc_atm = None, M_dot = None, Thrust = None):
+    def __init__(self, OF = None, Pc_atm = None, M_dot = None, Thrust = None, burnTime = 10 * (ureg.second)):
 
         self.C = CEA_Obj(oxName='LOX', fuelName='RP_1')
 
         if (M_dot == None) & (Thrust != None):
             self.Pc = Pc_atm * ureg.atm
             self.OF = OF #unitless (Mass ratio)
+            self.burnTime = burnTime
             self.Thrust = Thrust * ureg.N
 
             self.AeAt = self.C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / (1*ureg.atmosphere)), frozen=0, frozenAtThroat=0) #unitless
@@ -72,6 +79,7 @@ class engine():
             self.Pc = Pc_atm * ureg.atm
             self.OF = OF #unitless (Mass ratio)
             self.M_dot = M_dot * (ureg.kg / ureg.second)
+            self.burnTime = burnTime
 
             self.AeAt = self.C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / (1*ureg.atmosphere)), frozen=0, frozenAtThroat=0) #unitless
             self.Isp = self.C.estimate_Ambient_Isp(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps=self.AeAt, Pamb=14.7, frozen=0, frozenAtThroat=0)[0] * ureg.second
@@ -112,12 +120,41 @@ class engine():
         self.Thrust = (self.M_dot * self.Ve).to('N')
         return self.Thrust
 
+    @cached_property
+    def keroVolume(self):
+        self.keroVolume = self.burnTime * (self.M_dot/(1 + self.OF))/densityKero * ullageRatio
+        return self.keroVolume
+    
+    @cached_property
+    def LOXVolume(self):
+        self.LOXVolume = self.burnTime * (self.M_dot/(1 + (1/self.OF)))/densityLOX * ullageRatio
+        return self.LOXVolume
+    
+    @cached_property
+    def loxTankHeight(self):
+        #TODO: find tank height
+        return None
+    @cached_property
+    def keroTankHeight(self):
+        #TODO: find tank height
+        return None
+
+    @cached_property
+    def loxTankWeight(self):
+        #TODO: find tank weight
+        return None
+    @cached_property
+    def keroTankWeight(self):
+        #TODO: find tank weight
+        return None
+
+
 engineOne = engine(OF=2, Pc_atm=20, M_dot=1)
 engines = [engine(OF = 2, Pc_atm = i * 10, M_dot = 1) for i in range(1, 4)]
 ThroatRadius = np.sqrt(engineOne.A_star / np.pi) * 1000
-print(ThroatRadius)
+#print(ThroatRadius)
 # RPA gives a throat radius of 16.485 mm, we get 16.6898mm which is good enough
-print(engineOne.AeAt)
+#print(engineOne.AeAt)
 # RPA gives 3.62 Ae/At which is reflected by this.
 
 
