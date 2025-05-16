@@ -47,27 +47,43 @@ def IstrpcTemp(T_0, gamma, Mach):
     T = T_0 * ((1 + (((gamma - 1)/2) * Mach**2) ) ** (-1))
     return T
 
-def nearest8th(value): #round up to nearest 8th of an inch for purchasability
-    value = np.ceil(value/0.125)
-    return value
+def nearestThickDenom(value): #round up to nearest 8th of an inch for purchasability
+    thicknessesImperial = [0.014, 0.016, 0.028, 0.029, 0.035, 0.047, 0.049, 0.058, 0.065, 0.083, 0.095, 0.12, 0.125, 0.1875, 0.188, 0.25, 0.375, 0.5, 0.75, 1, 1.5] * (ureg.inch)
+    thicknessesMetric = [0.45, 0.89, 1, 1.5, 2, 3, 4] * (ureg.mm)
+    
+    for i in range(len(thicknessesImperial)):
+        if thicknessesImperial[i] - value > 0:
+            value = thicknessesImperial[i] #TODO: doesn't work
+            break
+
+    print(value)
+
+nearestThickDenom(0.26 * ureg.inch)
+def tankHeight(radius, propellantVolume):
+    tankHeight = propellantVolume/(np.pi*radius**2)
+    return tankHeight
+
+    
 
 #Constants
 R_ideal = 8.3144598 * ((((ureg.meter) ** 3) * ureg.Pa)/ (ureg.mol * ureg.degK))
+aluminumYieldStrength = 270 * (ureg.MPa)
 densityLOX = 1140 * ((ureg.kilogram)/(ureg.meter ** 3)) # density at boiling point at 14.7 psi
 densityKero = 820 * ((ureg.kilogram)/(ureg.meter ** 3)) # density at room temperature at 14.7 psi
 ullageRatio = 1.15 #to be moved? unsure if this is the best place for ullage, esp if we want to "calculate" it
 
 #Define the class here.
 class engine():
-    def __init__(self, OF = None, Pc_atm = None, M_dot = None, Thrust = None, burnTime = 10 * (ureg.second)):
+    def __init__(self, OF = None, Pc_atm = None, M_dot = None, Thrust = None, burnTime = 10, vehicleRadius = 8):
 
         self.C = CEA_Obj(oxName='LOX', fuelName='RP_1')
 
         if (M_dot == None) & (Thrust != None):
             self.Pc = Pc_atm * ureg.atm
             self.OF = OF #unitless (Mass ratio)
-            self.burnTime = burnTime
+            self.burnTime = burnTime * (ureg.second)
             self.Thrust = Thrust * ureg.N
+            self.VehicleRadius = vehicleRadius * (ureg.inch)
 
             self.AeAt = self.C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / (1*ureg.atmosphere)), frozen=0, frozenAtThroat=0) #unitless
             self.Isp = self.C.estimate_Ambient_Isp(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps=self.AeAt, Pamb=14.7, frozen=0, frozenAtThroat=0)[0] * ureg.second
@@ -79,7 +95,8 @@ class engine():
             self.Pc = Pc_atm * ureg.atm
             self.OF = OF #unitless (Mass ratio)
             self.M_dot = M_dot * (ureg.kg / ureg.second)
-            self.burnTime = burnTime
+            self.burnTime = burnTime * (ureg.second)
+            self.VehicleRadius = vehicleRadius * (ureg.inch)
 
             self.AeAt = self.C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / (1*ureg.atmosphere)), frozen=0, frozenAtThroat=0) #unitless
             self.Isp = self.C.estimate_Ambient_Isp(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps=self.AeAt, Pamb=14.7, frozen=0, frozenAtThroat=0)[0] * ureg.second
