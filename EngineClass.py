@@ -57,11 +57,13 @@ R_ideal = 8.3144598 * ((((ureg.meter) ** 3) * ureg.Pa)/ (ureg.mol * ureg.degK))
 
 #Define the class here.
 class engine():
-    def __init__(self, OF, Pc_atm, M_dot):
+    def __init__(self, OF, Pc_atm, M_dot, Temp_Chmbr, Press_Chmbr):
 
         self.OF = OF #unitless (Mass ratio)
         self.Pc = Pc_atm * ureg.atm
         self.M_dot = M_dot * (ureg.kg / ureg.second)
+        self.Temp_Chmbr = Temp_Chmbr
+        self.Press_Chmbr = Press_Chmbr
         #Temporary Object
         self.C = CEA_Obj(oxName='LOX', fuelName='RP_1')
         self.AeAt = self.C.get_eps_at_PcOvPe(Pc= self.Pc.to('psi').magnitude, MR=self.OF, PcOvPe= (self.Pc.to('psi') / ureg.atmosphere), frozen=0, frozenAtThroat=0) #unitless
@@ -107,14 +109,19 @@ class engine():
     
     @cached_property
     def HeatTransferCoefficient(self):
+        #Throat Diameter
         self.D_Thr = 2*np.sqrt(self.A_star/np.pi)
+        #Throat Specific Heat Capacity
         self.Cp_Thr = self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[0]
+        #Throat Viscosity
         self.Viscosity_Thr = self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[1]
+        #Throat Thermal Conductivity
         self.Thermal_Conductivity_Thr = self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[2]
+        #Throat Prandtl Number
         self.Prandtl_Thr=self.C.get_Throat_Transport(Pc= self.Pc.to('psi').magnitude, MR=self.OF, eps= self.AeAt , frozen=0)[3]
-        
-        self.Press_Thr = IstrpcPress(P_0, self.gamma_Thr, 1)
-        self.T_Thr = IstrpcTemp(T_0, self.gamma_Thr, 1)
+
+        self.Press_Thr = IstrpcPress(self.Press_Chmbr, self.gamma_Thr, 1)
+        self.T_Thr = IstrpcTemp(self.Temp_Chmbr, self.gamma_Thr, 1)
         self.Universal_Gas_Constant = 8.314
         self.C_star = np.sprt(((self.R_bar_Thr*self.T_Thr)/(self.gamma_Thr)) * ((self.gamma_Thr + 1)/2)^((self.gamma_Thr+1)/(self.gamma_Thr-1)))
         
