@@ -47,18 +47,35 @@ def IstrpcTemp(T_0, gamma, Mach):
     T = T_0 * ((1 + (((gamma - 1)/2) * Mach**2) ) ** (-1))
     return T
 
-def nearestThickDenom(value): #round up to nearest 8th of an inch for purchasability
+def nearestThickDenom(inputThick): #round up to nearest purchasable option
     thicknessesImperial = [0.014, 0.016, 0.028, 0.029, 0.035, 0.047, 0.049, 0.058, 0.065, 0.083, 0.095, 0.12, 0.125, 0.1875, 0.188, 0.25, 0.375, 0.5, 0.75, 1, 1.5] * (ureg.inch)
     thicknessesMetric = [0.45, 0.89, 1, 1.5, 2, 3, 4] * (ureg.mm)
+    chosenThick = 0
+    difference = 0
+
+    i = 0
+    while i < len(thicknessesImperial):
+        if thicknessesImperial[i] - inputThick > 0:
+            chosenThick = thicknessesImperial[i]
+            i = len(thicknessesImperial) 
+        i += 1
     
-    for i in range(len(thicknessesImperial)):
-        if thicknessesImperial[i] - value > 0:
-            value = thicknessesImperial[i] #TODO: doesn't work
-            break
+    i = 0
+    while i < len(thicknessesMetric):
+        if thicknessesMetric[i].to('in') - inputThick > 0:
+            if (chosenThick - inputThick) > (thicknessesMetric[i].to('in') - inputThick):
+                chosenThick = thicknessesMetric[i]
+            i = len(thicknessesMetric) 
+        i += 1
 
-    print(value)
+    difference = chosenThick - inputThick
 
-nearestThickDenom(0.26 * ureg.inch)
+    return chosenThick, difference
+
+def calcMinWallThick(pressure,radius): #hoop stress
+    minWallThick = pressure.to('pascal') * (radius.to('in')) / aluminumYieldStrength.to('pascal')
+    return minWallThick #value in inches
+
 def tankHeight(radius, propellantVolume):
     tankHeight = propellantVolume/(np.pi*radius**2)
     return tankHeight
@@ -71,10 +88,11 @@ aluminumYieldStrength = 270 * (ureg.MPa)
 densityLOX = 1140 * ((ureg.kilogram)/(ureg.meter ** 3)) # density at boiling point at 14.7 psi
 densityKero = 820 * ((ureg.kilogram)/(ureg.meter ** 3)) # density at room temperature at 14.7 psi
 ullageRatio = 1.15 #to be moved? unsure if this is the best place for ullage, esp if we want to "calculate" it
+bulkheadThickness = 2.5 * ureg.inch #thicnkess of the bulkheads
 
 #Define the class here.
 class engine():
-    def __init__(self, OF = None, Pc_atm = None, M_dot = None, Thrust = None, burnTime = 10, vehicleRadius = 8):
+    def __init__(self, OF = None, Pc_atm = None, M_dot = None, Thrust = None, burnTime = 10, vehicleRadius = 4):
 
         self.C = CEA_Obj(oxName='LOX', fuelName='RP_1')
 
@@ -149,12 +167,23 @@ class engine():
     
     @cached_property
     def loxTankHeight(self):
-        #TODO: find tank height
-        return None
+        losses = 400 * ureg.psi #placeholder pressure losses for the injector and feed system between prop tanks and chamber
+        thickness = calcMinWallThick((self.Pc.to('psi') + losses),self.VehicleRadius)
+        purchaseableThickness = nearestThickDenom(thickness)[0]
+        #remainder = nearestThickDenom(thickness)[1]
+ 
+        #print(purchaseableThickness)
+        return tankHeight(self.VehicleRadius - purchaseableThickness.to('inch'), self.LOXVolume.to('inch**3')) + bulkheadThickness #length of bulkheads
+    
     @cached_property
     def keroTankHeight(self):
-        #TODO: find tank height
-        return None
+        losses = 400 * ureg.psi #placeholder pressure losses for the injector and feed system between prop tanks and chamber
+        thickness = calcMinWallThick((self.Pc.to('psi') + losses),self.VehicleRadius) #more efficient ways to code, this is already calculated above
+        purchaseableThickness = nearestThickDenom(thickness)[0]
+        #remainder = nearestThickDenom(thickness)[1]
+ 
+        #print(purchaseableThickness)
+        return tankHeight(self.VehicleRadius - purchaseableThickness.to('inch'), self.keroVolume.to('inch**3')) + bulkheadThickness #length of bulkheads
 
     @cached_property
     def loxTankWeight(self):
@@ -173,10 +202,10 @@ ThroatRadius = np.sqrt(engineOne.A_star / np.pi) * 1000
 # RPA gives a throat radius of 16.485 mm, we get 16.6898mm which is good enough
 #print(engineOne.AeAt)
 # RPA gives 3.62 Ae/At which is reflected by this.
-
-
 end = time.time()
 print(f"Total runtime {end - start} seconds")
+
+
 
 #Debugging
 # C = CEA_Obj( oxName='LOX', fuelName='RP_1')
