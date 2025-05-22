@@ -57,7 +57,7 @@ class engine():
 
         self.C = CEA_Obj(oxName='LOX', fuelName='RP_1')
 
-        if (M_dot == None) & (Thrust != None):
+        if (M_dot == None) & (Thrust != None) & (Pc_atm != None) & (OF != None):
             self.Pc = Pc_atm * ureg.atm
             self.OF = OF #unitless (Mass ratio)
             self.Thrust = Thrust * ureg.N
@@ -68,7 +68,7 @@ class engine():
 
             self.M_dot = self.Thrust / self.Ve
             
-        elif (Thrust == None) & (M_dot != None):
+        elif (Thrust == None) & (M_dot != None) & (Pc_atm != None) & (OF != None):
             self.Pc = Pc_atm * ureg.atm
             self.OF = OF #unitless (Mass ratio)
             self.M_dot = M_dot * (ureg.kg / ureg.second)
