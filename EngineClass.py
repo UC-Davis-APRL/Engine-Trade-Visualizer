@@ -193,7 +193,15 @@ class engine():
     def keroTankWeight(self):
         #TODO: find tank weight
         return None
-
+    @cached_property
+    def lineWeight(self):
+        #TODO: find line weight with set line distance (constant?)
+        return None
+    @cached_property
+    def losses(self):
+         #TODO: find losses in the lines (major and minor losses)
+         return None
+    
 
 engineOne = engine(OF=2, Pc_atm=20, M_dot=1)
 engines = [engine(OF = 2, Pc_atm = i * 10, M_dot = 1) for i in range(1, 4)]
