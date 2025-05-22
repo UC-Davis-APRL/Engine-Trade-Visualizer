@@ -73,12 +73,14 @@ def nearestThickDenom(inputThick): #round up to nearest purchasable option
     return chosenThick, difference
 
 def calcMinWallThick(pressure,radius): #hoop stress
-    minWallThick = pressure.to('pascal') * (radius.to('in')) / aluminumYieldStrength.to('pascal')
+    minWallThick = pressure.to('pascal') * (radius.to('in')) / aluminumYieldStrength.to('pascal') * 1.2 
     return minWallThick #value in inches
 
 def tankHeight(radius, propellantVolume):
     tankHeight = propellantVolume/(np.pi*radius**2)
     return tankHeight
+
+
 
     
 
@@ -88,7 +90,7 @@ aluminumYieldStrength = 270 * (ureg.MPa)
 densityLOX = 1140 * ((ureg.kilogram)/(ureg.meter ** 3)) # density at boiling point at 14.7 psi
 densityKero = 820 * ((ureg.kilogram)/(ureg.meter ** 3)) # density at room temperature at 14.7 psi
 ullageRatio = 1.15 #to be moved? unsure if this is the best place for ullage, esp if we want to "calculate" it
-bulkheadThickness = 2.5 * ureg.inch #thicnkess of the bulkheads
+bulkheadThickness = 1.5 * ureg.inch #thicnkess of the bulkheads (around 1 inch)
 
 #Define the class here.
 class engine():
@@ -173,7 +175,7 @@ class engine():
         #remainder = nearestThickDenom(thickness)[1]
  
         #print(purchaseableThickness)
-        return tankHeight(self.VehicleRadius - purchaseableThickness.to('inch'), self.LOXVolume.to('inch**3')) + bulkheadThickness #length of bulkheads
+        return tankHeight(self.VehicleRadius - purchaseableThickness.to('inch'), self.LOXVolume.to('inch**3')) + 2*bulkheadThickness #length of bulkheads
     
     @cached_property
     def keroTankHeight(self):
@@ -183,7 +185,7 @@ class engine():
         #remainder = nearestThickDenom(thickness)[1]
  
         #print(purchaseableThickness)
-        return tankHeight(self.VehicleRadius - purchaseableThickness.to('inch'), self.keroVolume.to('inch**3')) + bulkheadThickness #length of bulkheads
+        return tankHeight(self.VehicleRadius - purchaseableThickness.to('inch'), self.keroVolume.to('inch**3')) + 2*bulkheadThickness #length of bulkheads
 
     @cached_property
     def loxTankWeight(self):
