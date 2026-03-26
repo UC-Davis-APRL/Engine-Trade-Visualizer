@@ -4,58 +4,25 @@ import pint
 import time
 pint.__version__  
 from pint import UnitRegistry
-
 from rocketcea.cea_obj import CEA_Obj
 from functools import cached_property
 
 ureg = UnitRegistry() #to use elsewhere
-
 start = time.time()
 
-# Here are a bunch of functions pasted from a diff calculator. (Might move to a different file later.)
-def C_star(Chamber_press, m_dot, A_throat):
-    C = (Chamber_press * A_throat)/m_dot #C* is a performance metric called characteristic velocity
-    return C
+#Constants
+R_ideal = 8.3144598 * (((ureg.meter ** 3) * ureg.Pa) / (ureg.mol * ureg.degK))
 
+#Useful Functions
 def A_star(m_dot, P_0, T_0, R, gamma):
     A = (m_dot/P_0) * (np.sqrt((T_0 * R)/gamma)) * ((1+((gamma-1)/2))**((gamma+1)/(2*(gamma-1))))
     return A
 
-def chamber_vol(L_star, A_star):
-    V_ch = L_star * A_star
-    return V_ch
-
-def F_thrust(m_dot, V_e, A_e, P_e, P_atm):
-    thrust = (m_dot * V_e) + A_e * (P_e - P_atm)
-    return thrust
-
-def m_dot(thrust, V_e, A_e, P_e, P_atm):
-    m_dot = (thrust - (A_e * (P_e - P_atm))) / (V_e)
-    return m_dot
-
-def exit_velo(T_0, M_bar, R_bar, gamma, P_e, P_0):
-    tempOne = ((2*R_bar*gamma*T_0)/((gamma - 1)*M_bar))
-    tempTwo = (1 - ((P_e/P_0) ** ((gamma-1)/gamma)))
-    V_e = np.sqrt(tempOne * tempTwo)
-    return V_e
-
-def incompres_Area(m_dot, cD, rho, delta_P):
-    A = m_dot / (cD * np.sqrt(2 * rho * delta_P))
-    return A
-
-def IstrpcTemp(T_0, gamma, Mach):
-    T = T_0 * ((1 + (((gamma - 1)/2) * Mach**2) ) ** (-1))
-    return T
-
-
-#Constants
-R_ideal = 8.3144598 * ((((ureg.meter) ** 3) * ureg.Pa)/ (ureg.mol * ureg.degK))
-
 #Define the class here.
 class engine():
-    def __init__(self, OF = None, Pc_atm = None, M_dot = None, Thrust = None):
+    def __init__(self, cea_obj,  OF = None, Pc_atm = None, M_dot = None, Thrust = None):
 
-        self.C = CEA_Obj(oxName='LOX', fuelName='RP_1')
+        self.C = cea_obj
 
         if (M_dot == None) & (Thrust != None) & (Pc_atm != None) & (OF != None):
             self.Pc = Pc_atm * ureg.atm
@@ -112,17 +79,20 @@ class engine():
         self.Thrust = (self.M_dot * self.Ve).to('N')
         return self.Thrust
 
-engineOne = engine(OF=2, Pc_atm=20, M_dot=1)
-engines = [engine(OF = 2, Pc_atm = i * 10, M_dot = 1) for i in range(1, 4)]
-ThroatRadius = np.sqrt(engineOne.A_star / np.pi) * 1000
-print(ThroatRadius)
-# RPA gives a throat radius of 16.485 mm, we get 16.6898mm which is good enough
-print(engineOne.AeAt)
-# RPA gives 3.62 Ae/At which is reflected by this.
 
+# C = CEA_Obj(oxName='LOX', fuelName='RP_1')
+# engineOne = engine(OF=2, Pc_atm=20, M_dot=1, cea_obj=C)
+# engines = [engine(OF = 2, Pc_atm = i * 10, M_dot = 1, cea_obj=C) for i in range(1, 4)]
+# ThroatRadius = np.sqrt(engineOne.A_star / np.pi) * 1000
+#
+# print(ThroatRadius)
+# # RPA gives a throat radius of 16.485 mm, we get 16.6898mm which is good enough
+# print(engineOne.AeAt)
+# # RPA gives 3.62 Ae/At which is reflected by this.
 
 end = time.time()
 print(f"Total runtime {end - start} seconds")
+
 
 #Debugging
 # C = CEA_Obj( oxName='LOX', fuelName='RP_1')
